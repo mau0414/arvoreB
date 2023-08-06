@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXIMOCHAVES 3
+#define MAXIMOCHAVES 2
 #define NOMEARQUIVO "btree.bin"
 #define NOMEHEADER "header.txt"
 #define PROMOCAO 1
@@ -212,7 +212,7 @@ retorno:
 int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
   printf("insert entrou\n");
   printf("curRRN: %d\n", curRRN);
-  int pos = 0;
+  int pos;
   Page curPage;
   //init_page(&curPage);
   int keyPromovidaAux;
@@ -231,12 +231,11 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     fread(&curPage, sizeof(Page), 1, f);       // le uma pagina
     fclose(f);                                 // fecha arquivo
     // printf("chegou aqui\n");
-    for (int i = 0; i < MAXIMOCHAVES; i++) {
-      if (key <= curPage.chaves[i] || curPage.chaves[i] == -1) {
-        if (key == curPage.chaves[i])
+    for (pos = 0; pos < MAXIMOCHAVES; pos++) {
+      if (key <= curPage.chaves[pos] || curPage.chaves[pos] == -1) {
+        if (key == curPage.chaves[pos])
           return -1; // erro pois chave ja existe
         else {
-          pos = i; 
           break;
         }
       }
@@ -321,7 +320,7 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
   } else {
     Page newPage;
     split(&keyPromovidaAux, &filhoDPromovidaAux, &curPage, keyPromovida, filhoDPromovida, &newPage);
-    f = fopen(NOMEARQUIVO, "wb");
+    f = fopen(NOMEARQUIVO, "r+b");
     // escrever curPage no arquivo em currRRN (?)
     fseek(f, curPage.RRN*sizeof(Page), SEEK_SET);
     fwrite(&curPage, sizeof(Page), 1, f);
@@ -472,7 +471,7 @@ void inserir(int* rootRRN) {
         novoRoot.RRN = novoRootRRN;
         *rootRRN = novoRootRRN;
 
-        f = fopen(NOMEARQUIVO, "ab");
+        f = fopen(NOMEARQUIVO, "r+b");
         fseek(f, novoRoot.RRN*sizeof(Page), SEEK_SET);
         printf("\n\n prestes a salvar em -> %d\n\n", novoRoot.RRN);
         fwrite(&novoRoot, sizeof(Page), 1, f);
@@ -511,5 +510,13 @@ int main() {
         printf("opcao invalida, tente novamente\n");
     }
   }
+
+  printf("teste final\n\n");
+  FILE* f = fopen(NOMEARQUIVO, "r");
+  Page final;
+  fseek(f, 1*sizeof(Page), SEEK_SET);
+  fread(&final, sizeof(Page), 1, f);
+  printf("%d", final.RRN);
+  fclose(f);
   return 0;
 }
