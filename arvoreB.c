@@ -65,7 +65,6 @@ retorno:
     1 para promocao
 */
 void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *filhoDPromovida, Page* newPage) {  
-  printf("chegou em split\n");
   // copiar todas chaves e ponteiros de page para uma pagina aux com capacidade  MAXKEYS+1 de chaves e MAXKEYS + 2 de filhos
   AuxiliarPage aux; 
   for (int i = 0; i < MAXIMOCHAVES; i++) {
@@ -76,12 +75,6 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
     if (i == MAXIMOCHAVES-1) {
         aux.filhos[i+1] = page->filhos[i+1];
     }
-  }
-  printf("copiou tudo\n");
-  for (int i = 0; i < MAXIMOCHAVES; i++) {
-    printf("aux.chaves[%d] = %d\n", i, aux.chaves[i]);
-    printf("aux.filhos[%d] = %d\n", i, aux.filhos[i]);
-    if (i==MAXIMOCHAVES-1) printf("aux.filhos[%d] = %d\n", i+1, aux.filhos[i+1]);
   }
 
   /*
@@ -95,8 +88,6 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
         break;
     }
   }
-  printf("dps do loop testeado posInsercao = %d\n", posInsercao);
-
 
   // transposicao elementos
   for (int i = MAXIMOCHAVES - 1; i >= posInsercao; i--) {
@@ -104,22 +95,11 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
     aux.filhos[i + 2] = aux.filhos[i + 1];
   } 
 
-  
-  printf("nova chave inserida %d\n", *newKey);
   aux.contador_chaves++;
   aux.chaves[posInsercao] = *newKey;
   aux.filhos[posInsercao+1] = *filhoDNewKey;
   aux.ponteirosDados[posInsercao] = *newKey;
-    
-  printf("dps de todos ajuteste\n");
-
-  for (int i = 0; i < MAXIMOCHAVES + 1; i++) {
-    printf("chave[%d] = %d\n", i, aux.chaves[i]);
-    printf("aux.filhos[%d] = %d\n", i, aux.filhos[i]);
-    if (i==MAXIMOCHAVES) printf("aux.filhos[%d] = %d\n", i+1, aux.filhos[i+1]);
-  }
   
-
   /*
     inicializa newPage preparado seu terreno pro arquivo - aloca seu novo RRN e atualiza no header
   */
@@ -142,23 +122,18 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
 
 
 /*set keyPromovida para o valor medio que sera promovida apos split*/
-  printf("aqui?\n");
   int posMedia = (MAXIMOCHAVES+1) / 2;
-  //printf("posicao media %d\n", posMedia);
-  printf("elemento na posicao Media[%d]: %d\n", posMedia, aux.chaves[posMedia]);
   (*keyPromovida) = aux.chaves[posMedia];
-  //printf("por aqui mano?\n");
   
   /*set filhoDPromovida para RRN de newPage*/
   *filhoDPromovida = newPage->RRN;
   
-  printf("filho da direita = %d\n", *filhoDPromovida);
   /*copiar todas chaves e ponteiros de filhos antes de promo_key da pag aux para page*/
   for (int i = 0; i < MAXIMOCHAVES; i++) {
     if (i >= posMedia) {
         page->chaves[i] = -1;
         page->ponteirosDados[i] = -1;
-        if (i > posMedia) page->filhos[i] = -1;    
+        page->filhos[i+1] = -1;    
     } else {
         page->chaves[i] = aux.chaves[i];
         page->ponteirosDados[i] = aux.ponteirosDados[i];
@@ -168,12 +143,6 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
     }
   }
 
-  printf("============================\n");
-  printf("como ficou page (%d) depois de ajustes:\n", page->RRN);
-  for (int i = 0; i < MAXIMOCHAVES; i++) {
-    printf("chave[%d] = %d\n", i, page->chaves[i]);
-  }
-  printf("============================\n");
   /* copia todas chaves e ponteiros para filhos depois de promo_key da pag aux para newpage*/
   int newPageIndex = 0;
   for (int i = posMedia+1; i < MAXIMOCHAVES+1; i++) {
@@ -184,13 +153,6 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
     newPageIndex++;
   }
   newPage->contador_chaves = MAXIMOCHAVES - posMedia;
-
-  printf("============================\n");
-  printf("como ficou page (%d) depois de ajustes:\n", newPage->RRN);
-  for (int i = 0; i < MAXIMOCHAVES; i++) {
-    printf("chave[%d] = %d\n", i, newPage->chaves[i]);
-  }
-  printf("============================\n");
 }
 
 /*
@@ -210,8 +172,6 @@ retorno:
 */
 
 int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
-  printf("insert entrou\n");
-  printf("curRRN: %d\n", curRRN);
   int pos;
   Page curPage;
   //init_page(&curPage);
@@ -220,17 +180,14 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
   FILE *f;
 
   if (curRRN == -1) {
-    // printf("era pagina nula\n");
     *keyPromovida = key;
     *filhoDPromovida = -1;
     return 1;
   } else {
-    // printf("nao era pagina nula\n");
     f = fopen(NOMEARQUIVO, "rb");              // abre arquivo
     fseek(f, curRRN * sizeof(Page), SEEK_SET); // posiciona na pagina desejada
     fread(&curPage, sizeof(Page), 1, f);       // le uma pagina
     fclose(f);                                 // fecha arquivo
-    // printf("chegou aqui\n");
     for (pos = 0; pos < MAXIMOCHAVES; pos++) {
       if (key <= curPage.chaves[pos] || curPage.chaves[pos] == -1) {
         if (key == curPage.chaves[pos])
@@ -241,27 +198,18 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
       }
     }
   }
-  // printf("chegou aqui tambem\n");
-  printf("olha aqui na posicao %d o numero: %d\n", pos, curPage.filhos[pos]);
-  printf("curPage.filhos[%d] = %d", pos, curPage.filhos[pos]);
   int returnValue = insert(curPage.filhos[pos], key, &filhoDPromovidaAux, &keyPromovidaAux);
 
-  printf("retorno %d\n", returnValue);
   // sem promocao ou erro
   if (returnValue == 0 || returnValue == -1) {
     printf("erro ou nao houve promocao\n");
     return returnValue;
   } else if (curPage.contador_chaves < MAXIMOCHAVES) {
-    //printf("tinha espaço na pagina %d para insercao\n", curRRN);
     // inserir keyPromovidaAux e filhoDPromovidaAux em curPage (?)
     // 1. procurar posicao onde inserir
     // 2. transportar elementos uma posicao a frente
     // 3. inserir na posicao
     // 4. salvar no arquivo
-
-    //printf("AQUIIII\n");
-    //printf("aqui: %d\n", curPage.chaves[0]);
-    // printf("aqui: %d\n", curPage.contador_chaves);
     
     // passo 1
     int posInsercao;
@@ -272,9 +220,6 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
         else break;
       }
     }
-
-    printf("Posicao insercao final %d\n", posInsercao);
-    printf("numero chaves %d\n", curPage.contador_chaves);
 
     // passo 2
     for (int i = curPage.contador_chaves - 1; i >= posInsercao;
@@ -290,21 +235,12 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     curPage.filhos[posInsercao+1] = filhoDPromovidaAux;
     curPage.ponteirosDados[posInsercao] = keyPromovidaAux;
     curPage.contador_chaves = curPage.contador_chaves + 1;
-    //printf("key promovida %d\n", keyPromovidaAux);
-
-    // printf("pagina:\n");
-    // for (int i = 0; i < MAXIMOCHAVES; i++) {
-    //   printf("chave[%d] = %d\n", i, curPage.chaves[i]);
-    // }
-    printf("salvando chave %d na posicao %d da pagina %d\n", keyPromovidaAux, posInsercao, curRRN);
     int numPages;
     f = fopen(NOMEHEADER, "r");
     fseek(f, sizeof(int), SEEK_SET);
     fread(&numPages, sizeof(int), 1, f);
     fclose(f);
 
-    // if (numPages == 1) { f = fopen(NOMEARQUIVO, "wb"); printf("teste fail"); }
-    // else f = fopen(NOMEARQUIVO, "ab");
     // passo 4
     f = fopen(NOMEARQUIVO, "r+b");
     fseek(f, curRRN*sizeof(Page), SEEK_SET);
@@ -315,7 +251,6 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     Page teste;
     fseek(f, 0 * sizeof(Page), SEEK_SET);
     fread(&teste, sizeof(Page), 1, f);
-    printf("aquiiii %d\n", teste.contador_chaves);
     return 0;
   } else {
     Page newPage;
@@ -324,30 +259,16 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     // escrever curPage no arquivo em currRRN (?)
     fseek(f, curPage.RRN*sizeof(Page), SEEK_SET);
     fwrite(&curPage, sizeof(Page), 1, f);
-    // printf("posicao insercao aqui: %d\n", curPage.RRN);
-    // lePagina(curPage);
-    // inserir newpageaux no arquivo em promo_r_child
     fseek(f, newPage.RRN*sizeof(Page), SEEK_SET);
     fwrite(&newPage, sizeof(Page), 1, f);
-    //printf("posicao insercao aqui: %d\n", newPage.RRN);
-    //lePagina(newPage);
     fclose(f);
 
-    // printf("\n\n teste \n\n");
-    // f = fopen(NOMEARQUIVO, "rb");
-    // Page teste;
-    // fread(&teste, sizeof(Page), 1, f);
-    // printf("result teste : \n");
-    // lePagina(teste);
-    // fread(&teste, sizeof(Page), 1, f);
-    // printf("result teste : \n");
-    // lePagina(teste);
-    // fclose(f);
     return 1;
   }
   return -1;
 }
 
+// auxiliar para testes
 void lePagina(Page page) {
     printf("pagina %d:\n", page.RRN);
     for (int i = 0; i < page.contador_chaves; i++) {
@@ -356,6 +277,7 @@ void lePagina(Page page) {
     printf("********************************************\n");
 }
 
+// auxiliar para testes
 void acessoSequencialDeDebug() {
   FILE *f = fopen(NOMEARQUIVO, "r");
   FILE* fheader = fopen(NOMEHEADER, "r");
@@ -365,12 +287,9 @@ void acessoSequencialDeDebug() {
   fread(&rootRRN, sizeof(int), 1, fheader);
   fread(&numPages, sizeof(int), 1, fheader);
   Page aux;
-  printf("\nraiz: %d\n", rootRRN);
-  printf("\n numpages %d\n", numPages);
   for (int i = 0; i < numPages; i++) {
     fread(&aux, sizeof(Page), 1, f);
     printf("pagina %d\n", aux.RRN);
-    printf("chaves:\n");
     for (int j = 0; j < aux.contador_chaves; j++) {
         printf("chave[%d] = %d\n", j, aux.chaves[j]);
     }
@@ -382,6 +301,7 @@ void acessoSequencialDeDebug() {
   }
   fclose(f);
   fclose(fheader);
+  printf("\n\n\n\n\n");
 }
 
 void create_files() {
@@ -410,8 +330,9 @@ void create_files() {
 
 // retorna RRN da pagina raiz
 int init_btree() {
-  create_files();
-  return 0;
+    // descomentar aqui caso queira que arquivo fique sendo criado toda vez que rodar (para fazer testes)
+//   create_files();
+//   return 0;
   FILE *f = fopen(NOMEARQUIVO, "r");
   if (f == NULL) {
     printf("arquivo nao existe ainda\n");
@@ -434,11 +355,7 @@ int atualizaHeaderNovoRoot() {
     fread(&numPages, sizeof(int), 1, f);
     fclose(f);
     rootRRN = numPages;
-    printf("novo root RRN: %d\n", rootRRN);
-    printf("numero paginas novo: %d", numPages);
     numPages = numPages + 1;
-    printf("\n\n numPages atualizado %d\n\n", numPages);
-    printf("prestes a salvar raiz %d e quantidade paginas %d\n", rootRRN, numPages);
     f = fopen(NOMEHEADER, "w");
     fwrite(&rootRRN, sizeof(int), 1, f);
     fwrite(&numPages, sizeof(int), 1, f);
@@ -473,7 +390,6 @@ void inserir(int* rootRRN) {
 
         f = fopen(NOMEARQUIVO, "r+b");
         fseek(f, novoRoot.RRN*sizeof(Page), SEEK_SET);
-        printf("\n\n prestes a salvar em -> %d\n\n", novoRoot.RRN);
         fwrite(&novoRoot, sizeof(Page), 1, f);
         fclose(f);
     } else if (resultado == ERRO) {
@@ -495,7 +411,6 @@ int main() {
     {
     case 1:
         inserir(&rootRRN);
-        printf("nova root: %d\n",rootRRN);
         break;
     case 2:
         break;
@@ -510,13 +425,5 @@ int main() {
         printf("opcao invalida, tente novamente\n");
     }
   }
-
-  printf("teste final\n\n");
-  FILE* f = fopen(NOMEARQUIVO, "r");
-  Page final;
-  fseek(f, 1*sizeof(Page), SEEK_SET);
-  fread(&final, sizeof(Page), 1, f);
-  printf("%d", final.RRN);
-  fclose(f);
   return 0;
 }
