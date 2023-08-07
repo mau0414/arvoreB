@@ -301,7 +301,7 @@ void acessoSequencialDeDebug() {
   }
   fclose(f);
   fclose(fheader);
-  printf("\n\n\n\n\n");
+  printf("\n\n");
 }
 
 void create_files() {
@@ -398,6 +398,56 @@ void inserir(int* rootRRN) {
     acessoSequencialDeDebug();
 }
 
+void buscaPorId() {
+    // Leitura da chave a ser procurada
+    int chave;
+    printf("Id procurado: \n");
+    scanf("%d", &chave);
+
+    FILE* fheader = fopen(NOMEHEADER, "r");
+    int rootRRN;
+    fread(&rootRRN, sizeof(int), 1, fheader);
+    fclose(fheader);
+    int curRRN = rootRRN;
+    
+    FILE* f;
+    Page curPage;
+    while (curRRN != -1) {
+        // Lê a página atual do arquivo - simula os acessos a disco abrindo o arquivo quando necessário
+        f = fopen(NOMEARQUIVO, "r");
+        fseek(f, curRRN * sizeof(Page), SEEK_SET);
+        fread(&curPage, sizeof(Page), 1, f);
+        fclose(f);
+
+        // Procura o índice na página em que a chave pode estar
+        int pos = 0;
+        while (pos < curPage.contador_chaves && chave > curPage.chaves[pos]) {
+            pos++;
+        }
+
+        // Se a chave estiver presente na página, imprime a página e as chaves que a acompanham
+        if (chave == curPage.chaves[pos]) {
+            printf("Pagina (RRN): %d\n", curPage.RRN);
+            printf("Chaves na pagina:\n");
+            for (int i = 0; i < curPage.contador_chaves; i++) {
+                printf("%d ", curPage.chaves[i]);
+            }
+            
+            printf("\nFilhos da chave: \n");
+            printf("Filho esquerdo: %d\n", curPage.filhos[pos]);
+            printf("Filho direito: %d\n", curPage.filhos[pos+1]);
+            return;
+        } else if (chave > curPage.chaves[pos]){
+          curRRN = curPage.filhos[pos]; // busca a página correspondente dentre todos os filhos da página atual
+        } else { // chave < curPage.chaves[pos]
+          curRRN = curPage.filhos[pos+1];
+        }
+    }
+
+    // Se chegou até aqui, a chave não foi encontrada na árvore
+    printf("Chave nao encontrada na B-tree.\n");
+}
+
 int main() {
   int rootRRN = init_btree();
   int opcao = 0;
@@ -413,6 +463,7 @@ int main() {
         inserir(&rootRRN);
         break;
     case 2:
+        buscaPorId();
         break;
     case 3:
         break;
