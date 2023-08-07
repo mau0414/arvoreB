@@ -290,7 +290,7 @@ void acessoSequencialDeDebug() {
   for (int i = 0; i < numPages; i++) {
     fread(&aux, sizeof(Page), 1, f);
     printf("pagina %d\n", aux.RRN);
-    for (int j = 0; j < aux.contador_chaves; j++) {
+    for (int j = 0; j < MAXIMOCHAVES; j++) {
         printf("chave[%d] = %d\n", j, aux.chaves[j]);
     }
     printf("filhos:\n");
@@ -411,14 +411,17 @@ int busca(int curRRN, int key, int *foundRRN, int *foundPos) {
 
     for (pos = 0; pos < MAXIMOCHAVES; pos++) {
       if (key <= curPage.chaves[pos] || curPage.chaves[pos] == -1) {
-        if (key == curPage.chaves[pos]){
-          *foundRRN = curRRN;
-          *foundPos = pos;
-          return 1;
-        } else {
-          return busca(curPage.filhos[pos], key, foundRRN, foundPos);
-        }
+        break;
       }
+    }
+    if (key == curPage.chaves[pos]){
+      *foundRRN = curRRN;
+      *foundPos = pos;
+      return 1;
+    }
+    else {
+      printf("busca na pagina %d\n", curPage.filhos[pos]);
+      return busca(curPage.filhos[pos], key, foundRRN, foundPos);
     }
   }
 }
