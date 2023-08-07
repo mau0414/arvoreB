@@ -398,54 +398,53 @@ void inserir(int* rootRRN) {
     acessoSequencialDeDebug();
 }
 
+// retorna 0 para nao encontrado e 1 para encontrado
+int busca(int curRRN, int key, int *foundRRN, int *foundPos) {
+  if (curRRN == -1) return 0;
+  else {
+    Page curPage;
+    int pos;
+    FILE* f = fopen(NOMEARQUIVO, "rb");
+    fseek(f, curRRN * sizeof(Page), SEEK_SET);
+    fread(&curPage, sizeof(Page), 1, f);
+    fclose(f);
+
+    for (pos = 0; pos < MAXIMOCHAVES; pos++) {
+      if (key <= curPage.chaves[pos] || curPage.chaves[pos] == -1) {
+        if (key == curPage.chaves[pos]){
+          *foundRRN = curRRN;
+          *foundPos = pos;
+          return 1;
+        } else {
+          return busca(curPage.filhos[pos], key, foundRRN, foundPos);
+        }
+      }
+    }
+  }
+}
+
 void buscaPorId() {
+    int foundPos;
+    int foundRRN;
+    int key;
+    int rootRRN;
+    int resultado;
+
     // Leitura da chave a ser procurada
-    int chave;
     printf("Id procurado: \n");
-    scanf("%d", &chave);
+    scanf("%d", &key);
 
     FILE* fheader = fopen(NOMEHEADER, "r");
-    int rootRRN;
     fread(&rootRRN, sizeof(int), 1, fheader);
     fclose(fheader);
-    int curRRN = rootRRN;
     
-    FILE* f;
-    Page curPage;
-    while (curRRN != -1) {
-        // Lê a página atual do arquivo - simula os acessos a disco abrindo o arquivo quando necessário
-        f = fopen(NOMEARQUIVO, "r");
-        fseek(f, curRRN * sizeof(Page), SEEK_SET);
-        fread(&curPage, sizeof(Page), 1, f);
-        fclose(f);
+    resultado = busca(rootRRN, key, &foundRRN, &foundPos);
 
-        // Procura o índice na página em que a chave pode estar
-        int pos = 0;
-        while (pos < curPage.contador_chaves && chave > curPage.chaves[pos]) {
-            pos++;
-        }
-
-        // Se a chave estiver presente na página, imprime a página e as chaves que a acompanham
-        if (chave == curPage.chaves[pos]) {
-            printf("Pagina (RRN): %d\n", curPage.RRN);
-            printf("Chaves na pagina:\n");
-            for (int i = 0; i < curPage.contador_chaves; i++) {
-                printf("%d ", curPage.chaves[i]);
-            }
-            
-            printf("\nFilhos da chave: \n");
-            printf("Filho esquerdo: %d\n", curPage.filhos[pos]);
-            printf("Filho direito: %d\n", curPage.filhos[pos+1]);
-            return;
-        } else if (chave > curPage.chaves[pos]){
-          curRRN = curPage.filhos[pos]; // busca a página correspondente dentre todos os filhos da página atual
-        } else { // chave < curPage.chaves[pos]
-          curRRN = curPage.filhos[pos+1];
-        }
+    if (resultado == 1) {
+      printf("achou na pagina %d na posicao %d\n", foundRRN, foundPos);
+    } else {
+      printf("Chave nao encontrada na B-tree.\n");
     }
-
-    // Se chegou até aqui, a chave não foi encontrada na árvore
-    printf("Chave nao encontrada na B-tree.\n");
 }
 
 int main() {
