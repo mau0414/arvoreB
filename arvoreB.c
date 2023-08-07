@@ -450,6 +450,16 @@ void buscaPorId() {
     }
 }
 
+void delBTree(){
+  if (remove(NOMEARQUIVO) == 0 && remove(NOMEHEADER) == 0)
+  {
+    printf("B-Tree excluida.\n");
+    create_files();
+  } else{
+    printf("Exclusao falhou.\n");
+  }
+}
+
 int main() {
   int rootRRN = init_btree();
   int opcao = 0;
@@ -457,7 +467,7 @@ int main() {
   // testes
   while (opcao != 4) {
     //system("cls");
-    printf("o que deseja? 1 - inserir, 2 - buscar item pelo id, 3 - remover item pelo id, 4 -sair, 5- debugar\n");
+    printf("o que deseja? 1 - inserir, 2 - buscar item pelo id, 3 - remover item pelo id, 4-sair, 5-debugar, 6-deletar B-tree \n");
     scanf("%d", &opcao);
     switch (opcao)
     {
@@ -473,6 +483,9 @@ int main() {
         break;
     case 5:
         acessoSequencialDeDebug();
+        break;
+    case 6:
+        delBTree();
         break;
     default:
         printf("opcao invalida, tente novamente\n");
