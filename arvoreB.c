@@ -399,8 +399,11 @@ void inserir(int* rootRRN) {
 }
 
 // retorna 0 para nao encontrado e 1 para encontrado
-int busca(int curRRN, int key, int *foundRRN, int *foundPos) {
-  if (curRRN == -1) return 0;
+int busca(int curRRN, int key, int *foundRRN, int *foundPos, int *parentRRN) {
+  if (curRRN == -1) {
+    *parentRRN = -1;
+    return 0;
+  }
   else {
     Page curPage;
     int pos;
@@ -421,7 +424,8 @@ int busca(int curRRN, int key, int *foundRRN, int *foundPos) {
     }
     else {
       printf("busca na pagina %d\n", curPage.filhos[pos]);
-      return busca(curPage.filhos[pos], key, foundRRN, foundPos);
+      *parentRRN = curRRN;
+      return busca(curPage.filhos[pos], key, foundRRN, foundPos, parentRRN);
     }
   }
 }
@@ -429,6 +433,7 @@ int busca(int curRRN, int key, int *foundRRN, int *foundPos) {
 void buscaPorId() {
     int foundPos;
     int foundRRN;
+    int parentRRN;
     int key;
     int rootRRN;
     int resultado;
@@ -441,7 +446,7 @@ void buscaPorId() {
     fread(&rootRRN, sizeof(int), 1, fheader);
     fclose(fheader);
     
-    resultado = busca(rootRRN, key, &foundRRN, &foundPos);
+    resultado = busca(rootRRN, key, &foundRRN, &foundPos, &parentRRN);
 
     if (resultado == 1) {
       printf("achou na pagina %d na posicao %d\n", foundRRN, foundPos);
@@ -450,15 +455,16 @@ void buscaPorId() {
     }
 }
 
-void remove_key(Page* curPage, int chave) {
+void remove_key(Page* curPage, int chave, int *parentRRN) {
 
   FILE* f;
   int i = 0;
-    while (i < curPage->contador_chaves && curPage->chaves[i] < chave) {
-        i++;
-    }
+  while (i < curPage->contador_chaves && curPage->chaves[i] < chave) {
+      i++;
+  }
 
   if (curPage->chaves[i] == chave) { // chave encontrada na pagina
+    
     // a chave está em um nó folha
     if (curPage->filhos[i] == -1) {
       for (int j = i; j < curPage->contador_chaves - 1; j++) {
@@ -468,7 +474,6 @@ void remove_key(Page* curPage, int chave) {
       curPage->chaves[curPage->contador_chaves - 1] = -1;
       curPage->ponteirosDados[curPage->contador_chaves - 1] = -1;
       curPage->contador_chaves--;
-      //printf("chegou1\n");
       f = fopen(NOMEARQUIVO, "r+b");
       fseek(f, curPage->RRN*sizeof(Page), SEEK_SET);
       fwrite(curPage, sizeof(Page), 1, f);
@@ -477,41 +482,69 @@ void remove_key(Page* curPage, int chave) {
 
     // a chave não está em um nó folha
     else if (curPage->filhos[i] != -1) {
-      //printf("chegou2\n");
       // Encontra o sucessor imediato no nó folha
-      Page* sucessor = &curPage[curPage->filhos[i+1]];
-      while (sucessor->filhos[0] != -1) {
-        //printf("chegou2.1\n");
+      Page page_aux;
+      //Page page_aux2;
+      f = fopen(NOMEARQUIVO, "rb");
+      fseek(f, curPage->filhos[i+1] * sizeof(Page), SEEK_SET);
+      fread(&page_aux, sizeof(Page), 1, f);
+      //fseek(f, curPage->filhos[i] * sizeof(Page), SEEK_SET);
+      //fread(&page_aux2, sizeof(Page), 1, f);
+      fclose(f);
+      Page* sucessor = NULL;
+      Page* sucessorDir = &page_aux; // subarvore direita
+      //Page* sucessorEsq = &page_aux2; // subarvore esquerda
+      while (sucessorDir->filhos[0] != -1 /*&& sucessorEsq->filhos[sucessorEsq->contador_chaves+1] != -1*/) {
         f = fopen(NOMEARQUIVO, "rb");
-        fseek(f, sucessor->filhos[0] * sizeof(Page), SEEK_SET);
-        fread(sucessor, sizeof(Page), 1, f);
+        fseek(f, sucessorDir->filhos[0] * sizeof(Page), SEEK_SET);
+        fread(&page_aux, sizeof(Page), 1, f);
+        //fseek(f, sucessorEsq->filhos[sucessorEsq->contador_chaves+1] * sizeof(Page), SEEK_SET);
+        //fread(&page_aux2, sizeof(Page), 1, f);
         fclose(f);
-        //printf("chegou2.2\n");
+        sucessorDir = &page_aux;
+        //sucessorEsq = &page_aux2;
       }
-      //printf("chegou2.3\n");
-      // Salva o valor da chave que será removida
-      int chave_removida = curPage->chaves[i];
       // Remove a chave do nó atual (substituindo pela chave do sucessor)
-      curPage->chaves[i] = sucessor->chaves[0];
+      int chave_removida = curPage->chaves[i];
+      /*if (sucessorEsq->contador_chaves > sucessorDir->contador_chaves) {
+        printf("chegou esq\n");
+        sucessor = &page_aux2;
+        curPage->chaves[i] = sucessor->chaves[sucessor->contador_chaves+1];
+        sucessor->chaves[sucessor->contador_chaves+1] = chave_removida;
+      }*/
+      //else {
+        //printf("chegou dir\n");
+        sucessor = &page_aux;
+        curPage->chaves[i] = sucessor->chaves[0];
+        sucessor->chaves[0] = chave_removida;
+      //}
       f = fopen(NOMEARQUIVO, "r+b");
       fseek(f, curPage->RRN*sizeof(Page), SEEK_SET);
       fwrite(curPage, sizeof(Page), 1, f);
+      fseek(f, sucessor->RRN*sizeof(Page), SEEK_SET);
+      fwrite(sucessor, sizeof(Page), 1, f);
       fclose(f);
+
+      *parentRRN = curPage->RRN;
       // Atualiza o nó filho onde foi encontrada a chave sucessora
-      remove_key(sucessor, chave_removida);
+      remove_key(sucessor, chave_removida, parentRRN);
     }
 
     // Verifica se o nó ainda possui o número mínimo de chaves
     if (curPage->contador_chaves >= (MAXIMOCHAVES + 1) / 2) {
-      //printf("chegou3\n");
       return;
     }
 
     // Verifica os nós irmãos adjacentes para aplicar redistribuição ou concatenação
     int posicao_pai = 0; // posição da página que está sendo removida em relação aos filhos do nó pai
+    Page auxpai;
     Page* pai = NULL;
     while (pai == NULL) {
-      pai = &curPage[curPage->filhos[posicao_pai]];
+      f = fopen(NOMEARQUIVO, "rb");
+      fseek(f, *parentRRN * sizeof(Page), SEEK_SET);
+      fread(&auxpai, sizeof(Page), 1, f);
+      fclose(f);
+      pai = &auxpai;
       for (int j = 0; j <= pai->contador_chaves; j++) {
           if (pai->filhos[j] == curPage->RRN) {
               posicao_pai = j;
@@ -519,120 +552,87 @@ void remove_key(Page* curPage, int chave) {
           }
       }
     }
+    Page auxesq;
+    Page auxdir;
     Page* irmao_esq = NULL;
     Page* irmao_dir = NULL;
     if (posicao_pai > 0) {
-        irmao_esq = &curPage[pai->filhos[posicao_pai - 1]];
+        f = fopen(NOMEARQUIVO, "rb");
+        fseek(f, pai->filhos[posicao_pai - 1] * sizeof(Page), SEEK_SET);
+        fread(&auxesq, sizeof(Page), 1, f);
+        fclose(f);
+        irmao_esq = &auxesq;
     }
     if (posicao_pai < pai->contador_chaves) {
-        irmao_dir = &curPage[pai->filhos[posicao_pai + 1]];
+        f = fopen(NOMEARQUIVO, "rb");
+        fseek(f, pai->filhos[posicao_pai + 1] * sizeof(Page), SEEK_SET);
+        fread(&auxdir, sizeof(Page), 1, f);
+        fclose(f);
+        irmao_dir = &auxdir;
+    }
+    // Redistribuição com o irmão da direita
+    if (irmao_dir != NULL && irmao_dir->contador_chaves > (MAXIMOCHAVES + 1) / 2) {
+        curPage->chaves[curPage->contador_chaves] = pai->chaves[posicao_pai];
+        curPage->ponteirosDados[curPage->contador_chaves] = pai->ponteirosDados[posicao_pai];
+        curPage->filhos[curPage->contador_chaves + 1] = irmao_dir->filhos[0];
+        pai->chaves[posicao_pai] = irmao_dir->chaves[0];
+        pai->ponteirosDados[posicao_pai] = irmao_dir->ponteirosDados[0];
+        for (int j = 0; j < irmao_dir->contador_chaves - 1; j++) {
+            irmao_dir->chaves[j] = irmao_dir->chaves[j + 1];
+            irmao_dir->ponteirosDados[j] = irmao_dir->ponteirosDados[j + 1];
+            irmao_dir->filhos[j] = irmao_dir->filhos[j + 1];
+        }
+        irmao_dir->chaves[irmao_dir->contador_chaves - 1] = -1;
+        irmao_dir->ponteirosDados[irmao_dir->contador_chaves - 1] = -1;
+        irmao_dir->filhos[irmao_dir->contador_chaves - 1] = irmao_dir->filhos[irmao_dir->contador_chaves];
+        irmao_dir->contador_chaves--;
+        curPage->contador_chaves++;
+        f = fopen(NOMEARQUIVO, "r+b");
+        fseek(f, curPage->RRN*sizeof(Page), SEEK_SET);
+        fwrite(curPage, sizeof(Page), 1, f);
+        fseek(f, pai->RRN*sizeof(Page), SEEK_SET);
+        fwrite(pai, sizeof(Page), 1, f);
+        fseek(f, irmao_dir->RRN*sizeof(Page), SEEK_SET);
+        fwrite(irmao_dir, sizeof(Page), 1, f);
+        fclose(f);
+        return;
     }
 
     // Redistribuição com o irmão da esquerda
-    if (irmao_esq != NULL && irmao_esq->contador_chaves > (MAXIMOCHAVES + 1) / 2) {
-        //printf("chegou4\n");
-        // Move a chave do pai para a página
+    else if (irmao_esq != NULL && irmao_esq->contador_chaves > (MAXIMOCHAVES + 1) / 2) {
         for (int j = curPage->contador_chaves; j > 0; j--) {
             curPage->chaves[j] = curPage->chaves[j - 1];
             curPage->ponteirosDados[j] = curPage->ponteirosDados[j - 1];
             curPage->filhos[j + 1] = curPage->filhos[j];
         }
         curPage->filhos[1] = curPage->filhos[0];
-
         curPage->chaves[0] = pai->chaves[posicao_pai - 1];
-        curPage->ponteirosDados[0] = irmao_esq->ponteirosDados[irmao_esq->contador_chaves - 1];
+        curPage->ponteirosDados[0] = pai->ponteirosDados[posicao_pai - 1];
         curPage->filhos[0] = irmao_esq->filhos[irmao_esq->contador_chaves];
         pai->chaves[posicao_pai - 1] = irmao_esq->chaves[irmao_esq->contador_chaves - 1];
-
+        pai->ponteirosDados[posicao_pai - 1] = irmao_esq->ponteirosDados[irmao_esq->contador_chaves - 1];
+        irmao_dir->chaves[irmao_dir->contador_chaves - 1] = -1;
+        irmao_dir->ponteirosDados[irmao_dir->contador_chaves - 1] = -1;
+        irmao_dir->filhos[irmao_dir->contador_chaves - 1] = irmao_dir->filhos[irmao_dir->contador_chaves];
         curPage->contador_chaves++;
         irmao_esq->contador_chaves--;
-        return;
-    }
-
-    // Redistribuição com o irmão da direita
-    else if (irmao_dir != NULL && irmao_dir->contador_chaves > (MAXIMOCHAVES + 1) / 2) {
-        //printf("chegou5\n");
-        curPage->chaves[curPage->contador_chaves] = pai->chaves[posicao_pai];
-        curPage->ponteirosDados[curPage->contador_chaves] = irmao_dir->ponteirosDados[0];
-        curPage->filhos[curPage->contador_chaves + 1] = irmao_dir->filhos[0];
-        pai->chaves[posicao_pai] = irmao_dir->chaves[0];
-
-        for (int j = 0; j < irmao_dir->contador_chaves - 1; j++) {
-            irmao_dir->chaves[j] = irmao_dir->chaves[j + 1];
-            irmao_dir->ponteirosDados[j] = irmao_dir->ponteirosDados[j + 1];
-            irmao_dir->filhos[j] = irmao_dir->filhos[j + 1];
-        }
-        irmao_dir->filhos[irmao_dir->contador_chaves - 1] = irmao_dir->filhos[irmao_dir->contador_chaves];
-        irmao_dir->contador_chaves--;
-        curPage->contador_chaves++;
-        return;
-    }
-
-    else {
-      // Concatenação com o irmão da esquerda
-      if (irmao_esq != NULL) {
-          //printf("chegou6\n");
-          irmao_esq->chaves[irmao_esq->contador_chaves] = pai->chaves[posicao_pai - 1];
-          irmao_esq->ponteirosDados[irmao_esq->contador_chaves] = curPage->ponteirosDados[0];
-          irmao_esq->filhos[irmao_esq->contador_chaves + 1] = curPage->filhos[0];
-
-          for (int j = 0; j < curPage->contador_chaves; j++) {
-              irmao_esq->chaves[irmao_esq->contador_chaves + 1 + j] = curPage->chaves[j];
-              irmao_esq->ponteirosDados[irmao_esq->contador_chaves + 1 + j] = curPage->ponteirosDados[j];
-              irmao_esq->filhos[irmao_esq->contador_chaves + 2 + j] = curPage->filhos[j + 1];
-          }
-
-          irmao_esq->contador_chaves += curPage->contador_chaves + 1;
-
-          // Remove o nó da página e ajusta os filhos do pai
-          for (int j = posicao_pai - 1; j < pai->contador_chaves - 1; j++) {
-              pai->chaves[j] = pai->chaves[j + 1];
-              pai->filhos[j + 1] = pai->filhos[j + 2];
-          }
-
-          pai->contador_chaves--;
-      }
-      // Concatenação com o irmão da direita
-      else if (irmao_dir != NULL) {
-          //printf("chegou7\n");
-          curPage->chaves[curPage->contador_chaves] = pai->chaves[posicao_pai];
-          curPage->ponteirosDados[curPage->contador_chaves] = irmao_dir->ponteirosDados[0];
-          curPage->filhos[curPage->contador_chaves + 1] = irmao_dir->filhos[0];
-
-          for (int j = 0; j < irmao_dir->contador_chaves; j++) {
-              curPage->chaves[curPage->contador_chaves + 1 + j] = irmao_dir->chaves[j];
-              curPage->ponteirosDados[curPage->contador_chaves + 1 + j] = irmao_dir->ponteirosDados[j];
-              curPage->filhos[curPage->contador_chaves + 2 + j] = irmao_dir->filhos[j + 1];
-          }
-
-          curPage->contador_chaves += irmao_dir->contador_chaves + 1;
-
-          // Remove o nó do irmão da direita e ajusta os filhos do pai
-          for (int j = posicao_pai; j < pai->contador_chaves - 1; j++) {
-              pai->chaves[j] = pai->chaves[j + 1];
-              pai->filhos[j + 1] = pai->filhos[j + 2];
-          }
-
-          pai->contador_chaves--;
-      }
-    }
-
-    // Repetição dos passos 3 a 5 para o nó pai
-    if (pai->contador_chaves >= (MAXIMOCHAVES + 1) / 2) {
-        //printf("chegou8\n");
         f = fopen(NOMEARQUIVO, "r+b");
-        fseek(f, pai->RRN * sizeof(Page), SEEK_SET);
+        fseek(f, curPage->RRN*sizeof(Page), SEEK_SET);
+        fwrite(curPage, sizeof(Page), 1, f);
+        fseek(f, pai->RRN*sizeof(Page), SEEK_SET);
         fwrite(pai, sizeof(Page), 1, f);
+        fseek(f, irmao_esq->RRN*sizeof(Page), SEEK_SET);
+        fwrite(irmao_esq, sizeof(Page), 1, f);
         fclose(f);
         return;
     }
-    else printf("repetir passos 4 e 5 \n");
+    // A concatenacao raramente acontece para uma B-tree com um grande numero de chaves por pagina
   }
 }
 
 void remover() {
   int key;
-  int rootRRN, foundRRN, foundPos;
+  int rootRRN, foundRRN, foundPos, parentRRN;
   int resultadoBusca;
 
   // Leitura da chave a ser removida
@@ -643,7 +643,7 @@ void remover() {
   fread(&rootRRN, sizeof(int), 1, fheader);
   fclose(fheader);
   
-  resultadoBusca = busca(rootRRN, key, &foundRRN, &foundPos);
+  resultadoBusca = busca(rootRRN, key, &foundRRN, &foundPos, &parentRRN);
 
   if (resultadoBusca == 1) {
     Page curPage;
@@ -652,7 +652,7 @@ void remover() {
     fread(&curPage, sizeof(Page), 1, f);
     fclose(f);
     
-    remove_key(&curPage, key);
+    remove_key(&curPage, key, &parentRRN);
   } else {
     printf("Chave nao encontrada na B-tree.\n");
   }
@@ -703,4 +703,4 @@ int main() {
     }
   }
   return 0;
-}
+} 
