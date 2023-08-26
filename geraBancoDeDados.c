@@ -52,7 +52,7 @@ int main() {
 
     caractere = fgetc(f);
     while (caractere != EOF) {
-        printf("%c", caractere);
+        // printf("%c", caractere);
         if (caractere == ',') {
             int i = 0;
             caractere = fgetc(f); // le o primeiro algarismo numerico
@@ -66,6 +66,15 @@ int main() {
             contadorIds = contadorIds + 1;
             aux.quantidade = (rand() % 200) + 1;
             fwrite(&aux, sizeof(Produto), 1, fDados);
+            printf("salvou:\n");
+            printf("nome: ");
+            for (int i = 0; i < MAXIMONOME; i++) {
+                printf("%c", aux.nome[i]);
+            }
+            printf("\npreco: ");
+            for (int i = 0; i < 10; i++) {
+                printf("%c", aux.preco[i]);
+            }
             aux = inicializaAux();
             caractere = fgetc(f);
         } else {
