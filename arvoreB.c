@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXIMOCHAVES 2
+#define MAXIMOCHAVES 3
 #define NOMEARQUIVO "btree.bin"
 #define NOMEHEADER "header.txt"
 #define PROMOCAO 1
@@ -292,6 +292,7 @@ void acessoSequencialDeDebug() {
     printf("pagina %d\n", aux.RRN);
     for (int j = 0; j < MAXIMOCHAVES; j++) {
         printf("chave[%d] = %d\n", j, aux.chaves[j]);
+        printf("ponteiroDado[%d] = %d\n", j, aux.ponteirosDados[j]);
     }
     printf("filhos:\n");
     for (int j = 0; j < MAXIMOCHAVES; j++) {
@@ -377,11 +378,13 @@ void inserir(int* rootRRN) {
         int novoRootRRN = atualizaHeaderNovoRoot();
         Page novoRoot;
         novoRoot.chaves[0] = keyPromovida;
+        novoRoot.ponteirosDados[0] = keyPromovida;
         novoRoot.filhos[0] = *rootRRN;
         novoRoot.filhos[1] = filhoDPromovida;
         for (int i = 1; i < MAXIMOCHAVES; i++) {
             novoRoot.chaves[i] = -1;
             novoRoot.filhos[i+1] = -1;
+            novoRoot.ponteirosDados[i] = -1;
             //if (i == MAXIMOCHAVES-1) novoRoot.filhos[i+1] = -1;
         }
         novoRoot.contador_chaves = 1;
