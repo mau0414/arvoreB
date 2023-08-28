@@ -6,7 +6,7 @@
 #define MAXIMONOME 300
 #define OPCOESPRODUTO 50
 #define MAXIMAQUANTIDADE 200
-#define NOMEARQUIVODADOS "dados.bin"
+#define NOMEARQUIVODADOS "dados3.bin"
 
 typedef struct 
 {
@@ -19,13 +19,13 @@ typedef struct
 
 char buffer[MAXIMONOME];
 
-void inicializaBuffer() {
-    for (int i = 0; i < MAXIMONOME; i++) {
-        buffer[i] = '-1';
-    }
-}
 
-Produto inicializaAux() {
+
+int main() {
+
+    srand(time(NULL));
+    char caractere;
+    int contadorIds = 0;
     Produto aux;
     for (int i = 0; i < MAXIMONOME; i++) {
         aux.nome[i] = '@';
@@ -33,21 +33,10 @@ Produto inicializaAux() {
     for (int i = 0; i < 10; i++) {
         aux.preco[i] = '@';
     }
-
-    return aux;
-}
-
-int main() {
-
-    srand(time(NULL));
-    char caractere;
-    int contadorIds = 0;
-    Produto aux = inicializaAux();
     FILE* f;
     FILE* fDados;
     fDados = fopen(NOMEARQUIVODADOS, "wb");
-    f = fopen("../amazon_processado.csv", "rb");    
-    inicializaBuffer();
+    f = fopen("../amazon_processado2.csv", "rb");    
     
 
     caractere = fgetc(f);
@@ -56,26 +45,34 @@ int main() {
         if (caractere == ',') {
             int i = 0;
             caractere = fgetc(f); // le o primeiro algarismo numerico
+            // printf("primeiro caractere %c\n\n", caractere);
             while (caractere != '\n') { // espera por '"' que indica fim
                 aux.preco[i] = caractere;
                 caractere = fgetc(f);
+                // printf("aux.preco[%d] = %c\n",i,  aux.preco[i]);
                 i = i + 1;
             }
+            aux.preco[i] = '\0';
         } else if (caractere == '\n') {
             aux.id = contadorIds;
             contadorIds = contadorIds + 1;
             aux.quantidade = (rand() % 200) + 1;
             fwrite(&aux, sizeof(Produto), 1, fDados);
-            printf("salvou:\n");
-            printf("nome: ");
+            // printf("salvou:\n");
+            // printf("nome: ");
             for (int i = 0; i < MAXIMONOME; i++) {
-                printf("%c", aux.nome[i]);
+                // printf("%c", aux.nome[i]);
             }
-            printf("\npreco: ");
+            // printf("\npreco: ");
             for (int i = 0; i < 10; i++) {
-                printf("%c", aux.preco[i]);
+                // printf("%c", aux.preco[i]);
             }
-            aux = inicializaAux();
+            for (int i = 0; i < MAXIMONOME; i++) {
+                aux.nome[i] = '@';
+            } 
+            for (int i = 0; i < 10; i++) {
+                aux.preco[i] = '@';
+            }
             caractere = fgetc(f);
         } else {
             int i = 0;
@@ -84,6 +81,7 @@ int main() {
                 caractere = fgetc(f);
                 i = i + 1;
             }
+            aux.nome[i] = '\0';
         }
     }
     fclose(f);

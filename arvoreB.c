@@ -7,6 +7,17 @@
 #define NAOPROMOCAO 0
 #define ERRO -1
 
+#define MAXIMONOME 300
+#define NOMEARQUIVODADOS "dados2.bin"
+
+typedef struct 
+{
+    int id;
+    int quantidade;
+    char preco[10];
+    char nome[MAXIMONOME];
+} Produto;
+
 typedef struct {
   int RRN;
   int contador_chaves;
@@ -64,7 +75,7 @@ retorno:
     0 para nao promocao
     1 para promocao
 */
-void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *filhoDPromovida, Page* newPage) {  
+void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *filhoDPromovida, Page* newPage, int* newPtr, int* ptrPromovida) {  
   // copiar todas chaves e ponteiros de page para uma pagina aux com capacidade  MAXKEYS+1 de chaves e MAXKEYS + 2 de filhos
   AuxiliarPage aux; 
   for (int i = 0; i < MAXIMOCHAVES; i++) {
@@ -92,13 +103,14 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
   // transposicao elementos
   for (int i = MAXIMOCHAVES - 1; i >= posInsercao; i--) {
     aux.chaves[i + 1] = aux.chaves[i];
+    aux.ponteirosDados[i + 1] = aux.ponteirosDados[i];
     aux.filhos[i + 2] = aux.filhos[i + 1];
   } 
 
   aux.contador_chaves++;
   aux.chaves[posInsercao] = *newKey;
   aux.filhos[posInsercao+1] = *filhoDNewKey;
-  aux.ponteirosDados[posInsercao] = *newKey;
+  aux.ponteirosDados[posInsercao] = *newPtr;
   
   /*
     inicializa newPage preparado seu terreno pro arquivo - aloca seu novo RRN e atualiza no header
@@ -124,6 +136,7 @@ void split(int* newKey, int* filhoDNewKey, Page *page, int *keyPromovida, int *f
 /*set keyPromovida para o valor medio que sera promovida apos split*/
   int posMedia = (MAXIMOCHAVES+1) / 2;
   (*keyPromovida) = aux.chaves[posMedia];
+  (*ptrPromovida) = aux.ponteirosDados[posMedia];
   
   /*set filhoDPromovida para RRN de newPage*/
   *filhoDPromovida = newPage->RRN;
@@ -171,16 +184,18 @@ retorno:
     1 para promocao
 */
 
-int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
+int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida, int ptr, int *ptrPromovida) {
   int pos;
   Page curPage;
   //init_page(&curPage);
   int keyPromovidaAux;
+  int ptrPromovidaAux;
   int filhoDPromovidaAux;
   FILE *f;
 
   if (curRRN == -1) {
     *keyPromovida = key;
+    *ptrPromovida = ptr;
     *filhoDPromovida = -1;
     return 1;
   } else {
@@ -198,7 +213,7 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
       }
     }
   }
-  int returnValue = insert(curPage.filhos[pos], key, &filhoDPromovidaAux, &keyPromovidaAux);
+  int returnValue = insert(curPage.filhos[pos], key, &filhoDPromovidaAux, &keyPromovidaAux, ptr, &ptrPromovidaAux);
 
   // sem promocao ou erro
   if (returnValue == 0 || returnValue == -1) {
@@ -225,6 +240,7 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     for (int i = curPage.contador_chaves - 1; i >= posInsercao;
          i--) {
       curPage.chaves[i + 1] = curPage.chaves[i];
+      curPage.ponteirosDados[i + 1] = curPage.ponteirosDados[i];
       curPage.filhos[i + 2] = curPage.filhos[i + 1];
       if (i == posInsercao) curPage.filhos[i+1] = curPage.filhos[i];
 
@@ -233,7 +249,7 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     // passo 3
     curPage.chaves[posInsercao] = keyPromovidaAux;
     curPage.filhos[posInsercao+1] = filhoDPromovidaAux;
-    curPage.ponteirosDados[posInsercao] = keyPromovidaAux;
+    curPage.ponteirosDados[posInsercao] = ptrPromovidaAux;
     curPage.contador_chaves = curPage.contador_chaves + 1;
     int numPages;
     f = fopen(NOMEHEADER, "r");
@@ -254,7 +270,7 @@ int insert(int curRRN, int key, int *filhoDPromovida, int *keyPromovida) {
     return 0;
   } else {
     Page newPage;
-    split(&keyPromovidaAux, &filhoDPromovidaAux, &curPage, keyPromovida, filhoDPromovida, &newPage);
+    split(&keyPromovidaAux, &filhoDPromovidaAux, &curPage, keyPromovida, filhoDPromovida, &newPage, &ptrPromovidaAux, ptrPromovida);
     f = fopen(NOMEARQUIVO, "r+b");
     // escrever curPage no arquivo em currRRN (?)
     fseek(f, curPage.RRN*sizeof(Page), SEEK_SET);
@@ -364,15 +380,15 @@ int atualizaHeaderNovoRoot() {
     return rootRRN; 
 }
 
-void inserir(int* rootRRN) {
+void inserir(int* rootRRN, int insercao, int ptr) {
     FILE* f;
-    int insercao;
     int keyPromovida;
+    int ptrPromovida;
     int filhoDPromovida;
-    printf("inserir: ");
-    scanf("%d", &insercao);
-    printf("\n");
-    int resultado = insert(*rootRRN, insercao, &filhoDPromovida, &keyPromovida);
+    // printf("inserir: ");
+    // scanf("%d", &insercao);
+    // printf("\n");
+    int resultado = insert(*rootRRN, insercao, &filhoDPromovida, &keyPromovida, ptr, &ptrPromovida);
     if (resultado == PROMOCAO) {
         // criar nova pagina raiz com chave = ultimo_argumento_insert, left_child = rootRRN e right_child = terceiro_argumento
         int novoRootRRN = atualizaHeaderNovoRoot();
@@ -398,7 +414,7 @@ void inserir(int* rootRRN) {
     } else if (resultado == ERRO) {
         printf("errou ou chave ja inserida\n");
     }
-    acessoSequencialDeDebug();
+    // acessoSequencialDeDebug();
 }
 
 // retorna 0 para nao encontrado e 1 para encontrado
@@ -423,6 +439,17 @@ int busca(int curRRN, int key, int *foundRRN, int *foundPos, int *parentRRN) {
     if (key == curPage.chaves[pos]){
       *foundRRN = curRRN;
       *foundPos = pos;
+
+      int posDado = curPage.ponteirosDados[pos];
+
+      Produto aux;
+      printf("ponteiro Dado: %d", posDado);
+      FILE* fDados = fopen(NOMEARQUIVODADOS, "rb");
+      fseek(fDados, posDado*sizeof(Produto), SEEK_SET);
+      fread(&aux, sizeof(Produto), 1, fDados);
+      printf("nome lido: %s\n", aux.nome);
+      printf("preco: %s\n", aux.preco);
+      fclose(fDados);
       return 1;
     }
     else {
@@ -676,6 +703,32 @@ int main() {
   int rootRRN = init_btree();
   int opcao = 0;
 
+  int ptr = 1351;
+  if (rootRRN == 0) {
+    int i = 0;
+    Produto aux;
+    FILE* fDados = fopen(NOMEARQUIVODADOS, "rb");
+    if (fDados == NULL) printf("arquivo de dados inexistente\n");
+    printf("inicializando arvore B com produtos do arquivo de dados...\n");
+    fread(&aux, sizeof(Produto),1,fDados);
+    while(!feof(fDados)) {
+        printf("salvando id %d presente no RRN %d\n", aux.id, i);
+        for (int i = 0; i < 10; i++) {
+          printf("%c", aux.preco[i]);
+        }
+        printf("\n");
+        inserir(&rootRRN, aux.id, i);
+        fread(&aux, sizeof(Produto),1,fDados);
+        i = i +1;
+    }
+    printf("arvore b inicializada.\n");
+    fclose(fDados);
+    // FILE* f = fopen(NOMEHEADER, "wb");
+    // fseek(f, 0, SEEK_END);
+    // fwrite(&proxRRN, sizeof(int), 1, f);
+    // fclose(f);
+  }
+
   // testes
   while (opcao != 4) {
     //system("cls");
@@ -684,7 +737,7 @@ int main() {
     switch (opcao)
     {
     case 1:
-        inserir(&rootRRN);
+        inserir(&rootRRN, 2, 2);
         break;
     case 2:
         buscaPorId();
