@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXIMOCHAVES 3
+#define MAXIMOCHAVES 300
 #define NOMEARQUIVO "btree.bin"
 #define NOMEHEADER "header.txt"
 #define PROMOCAO 1
@@ -443,17 +443,18 @@ int busca(int curRRN, int key, int *foundRRN, int *foundPos, int *parentRRN) {
       int posDado = curPage.ponteirosDados[pos];
 
       Produto aux;
-      printf("ponteiro Dado: %d", posDado);
+      //printf("ponteiro Dado: %d[]", posDado);
       FILE* fDados = fopen(NOMEARQUIVODADOS, "rb");
       fseek(fDados, posDado*sizeof(Produto), SEEK_SET);
       fread(&aux, sizeof(Produto), 1, fDados);
-      printf("nome lido: %s\n", aux.nome);
-      printf("preco: %s\n", aux.preco);
+      printf("\nNome do produto: %s\n", aux.nome);
+      printf("Quantidade em estoque do produto: %d\n", aux.quantidade);
+      printf("Preco do produto: %s\n", aux.preco);
       fclose(fDados);
       return 1;
     }
     else {
-      printf("busca na pagina %d\n", curPage.filhos[pos]);
+      //printf("busca na página %d\n", curPage.filhos[pos]);
       *parentRRN = curRRN;
       return busca(curPage.filhos[pos], key, foundRRN, foundPos, parentRRN);
     }
@@ -469,7 +470,7 @@ void buscaPorId() {
     int resultado;
 
     // Leitura da chave a ser procurada
-    printf("Id procurado: \n");
+    printf("\nId procurado: \n");
     scanf("%d", &key);
 
     FILE* fheader = fopen(NOMEHEADER, "r");
@@ -479,9 +480,9 @@ void buscaPorId() {
     resultado = busca(rootRRN, key, &foundRRN, &foundPos, &parentRRN);
 
     if (resultado == 1) {
-      printf("achou na pagina %d na posicao %d\n", foundRRN, foundPos);
+      printf("\nRegistro encontrado na pagina %d na posicao %d\n", foundRRN, foundPos);
     } else {
-      printf("Chave nao encontrada na B-tree.\n");
+      printf("\nChave nao encontrada na B-tree.\n");
     }
 }
 
@@ -732,7 +733,7 @@ int main() {
   // testes
   while (opcao != 4) {
     //system("cls");
-    printf("o que deseja? 1 - inserir, 2 - buscar item pelo id, 3 - remover item pelo id, 4-sair, 5-debugar, 6-deletar B-tree \n");
+    printf("\nDigite o numero de acordo com a acao desejada\n\n1 - Inserir item\n2 - Buscar item pelo ID\n3 - Remover item pelo ID\n4 - Fechar a aplicacao\n\n");
     scanf("%d", &opcao);
     switch (opcao)
     {
@@ -747,15 +748,15 @@ int main() {
         break;
     case 4:
         break;
-    case 5:
+    /*case 5:
         acessoSequencialDeDebug();
         break;
     case 6:
         printf("recomenda-se deletar manualmente\n");
         delBTree();
-        break;
+        break;*/
     default:
-        printf("opcao invalida, tente novamente\n");
+        printf("Opção inválida, tente novamente\n\n");
     }
   }
   return 0;
